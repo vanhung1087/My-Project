@@ -100,6 +100,7 @@ void GameLayer::update (float dt) {
         _bulletDeltaTimer= 0;
     }
     _bulletDeltaTimer += dt;
+    
     float newY;
     if (_cometTimer > _cometInterval) {
         _cometTimer = 0;
@@ -187,7 +188,7 @@ void GameLayer::startFighting(void)
 {
     _indexBullet++;
     if (_indexBullet == _bullets->count()) _indexBullet=0;
-    Bullet *b = (Bullet *) _bullets->objectAtIndex(_indexBullet);
+    CCParticleSystem *b = (CCParticleSystem *) _bullets->objectAtIndex(_indexBullet);
     
     int bulletX = _rocket->getPositionX() - 40;
     int bulletY = _rocket->getPositionY();
@@ -199,6 +200,7 @@ void GameLayer::startFighting(void)
        
     b->stopAllActions();
     b->setPosition(ccp(bulletX, bulletY));
+    if (!b->isActive()) b->resetSystem();
     int s = bulletTargetY - bulletY ;
     float time = (s * 1.0f) / 1000;
 
@@ -214,6 +216,12 @@ void GameLayer::startFighting(void)
 void GameLayer::fightingDone(CCNode* pSender)
 {
     pSender->setVisible(false);
+    if (pSender->getTag() == kSpriteBullet)
+    {
+        CCParticleSystem *b = (CCParticleSystem *) pSender;
+        b->stopSystem();
+    }
+    
 }
 
 //Tran Van Hung
@@ -464,10 +472,6 @@ void GameLayer::createGameScreen () {
     _bullet->setPosition( ccp(_rocket->getPositionX() - 40, _rocket->getPositionY() ) );
     _gameBatchNode3->addChild(_bullet, kForeground, kSpriteBullet);
    
-    _gun = CCSprite::createWithSpriteFrameName("gun.png");
-    _gun->setPosition(ccp(_rocket->getPositionX() - 10, _rocket->getPositionY() ));
-    _gameBatchNode->addChild(_gun, kBackground);
-
     
     //add planets
    // GameSprite * planet;
@@ -476,11 +480,17 @@ void GameLayer::createGameScreen () {
     
     _bullets = CCArray::createWithCapacity(20);
     _bullets ->retain();
-    Bullet *b ;
+    CCParticleSystem *b ;
     for (int i = 0; i < 20; i++) {
-        b = Bullet::create();
+        b = CCParticleSystemQuad::create("jet.plist");
+        //b->setSourcePosition( ccp(0,-_rocket->getRadius() * 0.5f) );
         b->setPosition( ccp(_rocket->getPositionX() - 40, _rocket->getPositionY() ) );
-        _gameBatchNode3->addChild(b, kForeground, kSpriteBullet);
+        b->setAngle(-90);
+        b->stopSystem();
+
+       
+       // _gameBatchNode3->addChild(b, kForeground, kSpriteBullet);
+       this->addChild(b, kForeground, kSpriteBullet);
         _bullets->addObject(b);
     }
     _indexBullet = -1;
@@ -563,11 +573,6 @@ void GameLayer::createGameScreen () {
     
     _lineContainer = LineContainer::create();
     this->addChild( _lineContainer, kForeground );
-}
-
-void GameLayer::createActions(void)
-{
-    
 }
 
 //Tran Van Hung

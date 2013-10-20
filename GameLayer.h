@@ -20,7 +20,8 @@ enum {
     kSpriteRocket,
     kSpritePlanet,
     kSpriteBoost,
-    kSpriteStar
+    kSpriteStar,
+    kSpriteBullet
 };
 
 typedef enum gamestates {
@@ -34,7 +35,7 @@ typedef enum gamestates {
 class Rocket;
 class LineContainer;
 class GameSprite;
-
+class Bullet;
 
 class GameLayer : public CCLayer {
     
@@ -43,12 +44,16 @@ class GameLayer : public CCLayer {
     LineContainer * _lineContainer;
     
     CCSpriteBatchNode *_gameBatchNode;
+    CCSpriteBatchNode *_gameBatchNode3;
+    
     CCLabelBMFont * _scoreDisplay;
+   
     
     GameSprite * _pauseBtn;
     CCSprite * _intro;
     CCSprite *_gameOver;
     CCSprite *_paused;
+    CCSprite *_gun;
     
     CCParticleSystem * _star;
     CCParticleSystem * _jet;
@@ -59,7 +64,18 @@ class GameLayer : public CCLayer {
     
     CCArray * _planets;
     CCSize _screenSize;
+    CCSize _backGroundSize;
     
+    CCSprite * bgF ;
+    CCSprite * bgS ;
+    
+    Bullet *_bullet;
+    CCArray *_bullets;
+    
+    
+    CCPoint _positionBgFirst;
+    CCPoint _positionBgSec;
+
     GameState _state;
     
     bool _drawing;
@@ -71,15 +87,26 @@ class GameLayer : public CCLayer {
     int _minLineLength;
     float _cometInterval;
     float _cometTimer;
+    float _bulletDeltaTimer;
+    
+    int _indexBullet;
+   
     
     void resetGame(void);
     void resetStar(void);
+    void resetBullets(void);
+    
+    void startFighting(void);
+    void fightingDone(CCNode* pSender);
+    
+    
     void killPlayer(void);
     
     void createGameScreen(void);
     void createParticles(void);
     void createStarGrid(void);
-
+    void createActions(void);
+    void scrollBackground(float dt);
 	int _score;
 	float _timeBetweenPickups;
     

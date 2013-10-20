@@ -93,13 +93,36 @@ void GameLayer::update (float dt) {
     _jet->setRotation(_rocket->getRotation());
     _jet->setPosition(_rocket->getPosition());
     
-     _cometTimer += dt;
+    if (_bullet->getPositionY() > _screenSize.height)
+        resetBullets();
+    
+    //_bullet->update(dt);
     if (_bulletDeltaTimer > 0.1f)
     {
-        startFighting();
-        _bulletDeltaTimer= 0;
+        int count = _bullets->count();        
+        _indexBullet++;
+        if (_indexBullet == count) _indexBullet = 0;
+        Bullet * b = (Bullet *) _bullets ->objectAtIndex(_indexBullet);
+        b->setFighting(true);
+        b->setVisible(true);
+        _bulletDeltaTimer = 0;
     }
     _bulletDeltaTimer += dt;
+    int count = _bullets->count();
+    
+    for (int i = 0 ; i < count; i++) {
+        
+        Bullet * b = (Bullet *) _bullets ->objectAtIndex(i);
+        b->update(dt);
+        if (b->getPositionY() > _screenSize.height + b->boundingBox().size.height*0.5f)
+        {
+            b->setPosition( ccp(_rocket->getPositionX() - 40, _rocket->getPositionY() ) );
+            b->setFighting(false);
+            b->setVisible(false);
+        }
+    }
+    _cometTimer += dt;
+    
     float newY;
     if (_cometTimer > _cometInterval) {
         _cometTimer = 0;
@@ -183,38 +206,7 @@ void GameLayer::update (float dt) {
 
 }
 
-void GameLayer::startFighting(void)
-{
-    _indexBullet++;
-    if (_indexBullet == _bullets->count()) _indexBullet=0;
-    Bullet *b = (Bullet *) _bullets->objectAtIndex(_indexBullet);
-    
-    int bulletX = _rocket->getPositionX() - 40;
-    int bulletY = _rocket->getPositionY();
-    
-    int bulletTargetX = _rocket->getPositionX() - 40;
-    int bulletTargetY = _screenSize.height + b->boundingBox().size.height * 0.5f;
-    
-       
-       
-    b->stopAllActions();
-    b->setPosition(ccp(bulletX, bulletY));
-    int s = bulletTargetY - bulletY ;
-    float time = (s * 1.0f) / 1000;
 
-
-    CCActionInterval*  _bulletFighting = CCMoveTo::create(time, ccp(bulletTargetX, bulletTargetY));
-    CCFiniteTimeAction*  sequence = CCSequence::create(_bulletFighting,
-                                                       CCCallFuncN::create
-                                                       (this, callfuncN_selector(GameLayer::fightingDone)),NULL);
-    b->setVisible(true);
-    b->runAction(sequence);
-    
-}
-void GameLayer::fightingDone(CCNode* pSender)
-{
-    pSender->setVisible(false);
-}
 
 //Tran Van Hung
 void GameLayer::ccTouchesBegan(CCSet* pTouches, CCEvent* event) {
@@ -248,18 +240,16 @@ void GameLayer::ccTouchesMoved(CCSet* pTouches, CCEvent* event) {
         CCTouch *touch = (CCTouch *)pTouches->anyObject();
         if(touch ) {
             CCPoint tap = touch->getLocation();
-            _rocket ->setPositionX(tap.x);
-            _rocket ->setPositionY(tap.y);
-//            float dx = _rocket->getPositionX() - tap.x;
-//            float dy = _rocket->getPositionY() - tap.y;
-//            if (dx * dx + dy * dy > pow (_minLineLength, 2)) {
-//                _rocket->select(true);
-//                _lineContainer->setPivot ( tap );
-//                _lineContainer->setLineType ( LINE_TEMP );
-//            } else {
-//                _rocket->select(false);
-//                _lineContainer->setLineType ( LINE_NONE );
-//            }
+            float dx = _rocket->getPositionX() - tap.x;
+            float dy = _rocket->getPositionY() - tap.y;
+            if (dx * dx + dy * dy > pow (_minLineLength, 2)) {
+                _rocket->select(true);
+                _lineContainer->setPivot ( tap );
+                _lineContainer->setLineType ( LINE_TEMP );
+            } else {
+                _rocket->select(false);
+                _lineContainer->setLineType ( LINE_NONE );
+            }
         }
     }
     
@@ -464,13 +454,9 @@ void GameLayer::createGameScreen () {
     _bullet->setPosition( ccp(_rocket->getPositionX() - 40, _rocket->getPositionY() ) );
     _gameBatchNode3->addChild(_bullet, kForeground, kSpriteBullet);
    
-    _gun = CCSprite::createWithSpriteFrameName("gun.png");
-    _gun->setPosition(ccp(_rocket->getPositionX() - 10, _rocket->getPositionY() ));
-    _gameBatchNode->addChild(_gun, kBackground);
-
     
     //add planets
-   // GameSprite * planet;
+    GameSprite * planet;
     _planets = CCArray::create();
     _planets->retain();
     
@@ -563,11 +549,6 @@ void GameLayer::createGameScreen () {
     
     _lineContainer = LineContainer::create();
     this->addChild( _lineContainer, kForeground );
-}
-
-void GameLayer::createActions(void)
-{
-    
 }
 
 //Tran Van Hung
