@@ -53,7 +53,7 @@ class GameLayer : public CCLayer {
     CCSprite * _intro;
     CCSprite *_gameOver;
     CCSprite *_paused;
-    CCSprite *_gun;
+   
     
     CCParticleSystem * _star;
     CCParticleSystem * _jet;
@@ -70,8 +70,15 @@ class GameLayer : public CCLayer {
     CCSprite * bgS ;
     
     Bullet *_bullet;
-    CCArray *_bullets;
     
+    CCArray *_bullets;
+    CCArray *_leftBullets;
+    
+    
+    CCArray *_bulletsStraightLeft;
+    CCArray *_bulletsStraightRight;
+    
+   
     
     CCPoint _positionBgFirst;
     CCPoint _positionBgSec;
@@ -90,13 +97,17 @@ class GameLayer : public CCLayer {
     float _bulletDeltaTimer;
     
     int _indexBullet;
-   
+    int _indexBulletStraight;
+    float _angleXStartFighting;
     
     void resetGame(void);
     void resetStar(void);
     void resetBullets(void);
     
-    void startFighting(void);
+    void startFighting(float dt);
+    void startFightingStraight(float dt);
+    
+    
     void fightingDone(CCNode* pSender);
     
     

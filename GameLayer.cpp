@@ -21,7 +21,9 @@ GameLayer::~GameLayer () {
     
     CC_SAFE_RELEASE(_planets);
     CC_SAFE_RELEASE(_bullets);
-
+    CC_SAFE_RELEASE(_leftBullets);
+    CC_SAFE_RELEASE(_bulletsStraightLeft);
+    CC_SAFE_RELEASE(_bulletsStraightRight);
 }
 
 CCScene* GameLayer::scene()
@@ -96,10 +98,12 @@ void GameLayer::update (float dt) {
      _cometTimer += dt;
     if (_bulletDeltaTimer > 0.1f)
     {
-        startFighting();
+        startFightingStraight(dt);
+        startFighting(dt);
         _bulletDeltaTimer= 0;
     }
     _bulletDeltaTimer += dt;
+    
     float newY;
     if (_cometTimer > _cometInterval) {
         _cometTimer = 0;
@@ -182,33 +186,112 @@ void GameLayer::update (float dt) {
     _scoreDisplay->setPosition(ccp(_screenSize.width - _scoreDisplay->boundingBox().size.width , _screenSize.height * 0.96f));
 
 }
+void GameLayer::startFightingStraight(float dt)
+{
+    _indexBulletStraight++;
+    if (_indexBulletStraight == _bulletsStraightLeft->count()) _indexBulletStraight = 0;
+    Bullet *bRight = (Bullet *) _bulletsStraightRight ->objectAtIndex(_indexBulletStraight);
+    Bullet *bLeft = (Bullet *) _bulletsStraightLeft ->objectAtIndex(_indexBulletStraight);
 
-void GameLayer::startFighting(void)
+    static int counterFight = 0;
+    
+    counterFight++;
+
+    float abc = 20 ;
+    
+    if (counterFight == 3)
+    {
+        counterFight = 0;
+        abc = 0;
+    }
+    
+    float bulletXRight = _rocket->getPositionX() + abc  ;
+    float bulletXLeft = _rocket->getPositionX() - abc  ;
+    float bulletY = _rocket->getPositionY();
+    
+    bRight->stopAllActions();
+    bRight->setPosition(ccp(bulletXRight, bulletY));
+    
+    bLeft->stopAllActions();
+    bLeft->setPosition(ccp(bulletXLeft, bulletY));
+    
+    float bulletTargetX = _rocket->getPositionX() + abc ;
+    float bulletTargetLeftX = _rocket->getPositionX() - abc ;
+    float bulletTargetY = _screenSize.height + bRight->boundingBox().size.height * 0.5f;
+    
+    int s = bulletTargetY - bulletY ;
+    float time = (s * 1.0f) / 800;
+
+
+    
+    CCFiniteTimeAction * sequenceRight = CCSequence::create(CCMoveTo::create(time, ccp(bulletTargetX, bulletTargetY)),
+                                                       CCCallFuncN::create
+                                                       (this, callfuncN_selector(GameLayer::fightingDone)),NULL);
+    
+    bRight->setVisible(true);
+    bRight->runAction(sequenceRight);
+    
+    
+    CCFiniteTimeAction * sequenceLeft = CCSequence::create(CCMoveTo::create(time, ccp(bulletTargetLeftX, bulletTargetY)),
+                                                           CCCallFuncN::create
+                                                           (this, callfuncN_selector(GameLayer::fightingDone)),NULL);
+    bLeft->setVisible(true);
+    bLeft->runAction(sequenceLeft);
+
+    
+}
+void GameLayer::startFighting(float dt)
 {
     _indexBullet++;
     if (_indexBullet == _bullets->count()) _indexBullet=0;
-    Bullet *b = (Bullet *) _bullets->objectAtIndex(_indexBullet);
+    Bullet *b = (Bullet *) _bullets ->objectAtIndex(_indexBullet);
+    Bullet *bLeft = (Bullet *) _leftBullets ->objectAtIndex(_indexBullet);
+   
     
-    int bulletX = _rocket->getPositionX() - 40;
-    int bulletY = _rocket->getPositionY();
+    float angle = CC_DEGREES_TO_RADIANS(_angleXStartFighting);
+    _angleXStartFighting += dt*1500;
+    if (_angleXStartFighting >= 360) _angleXStartFighting = 0;
     
-    int bulletTargetX = _rocket->getPositionX() - 40;
-    int bulletTargetY = _screenSize.height + b->boundingBox().size.height * 0.5f;
+    float abc = cos (angle) * 40 ;
+    float bulletX = _rocket->getPositionX() + abc  ;
+    float bulletXLeft = _rocket->getPositionX() - abc  ;
+    float bulletY = _rocket->getPositionY();
+    
+    float bulletTargetX = _rocket->getPositionX() + abc ;
+    float bulletTargetLeftX = _rocket->getPositionX() - abc ;
+    float bulletTargetY = _screenSize.height + b->boundingBox().size.height * 0.5f;
     
        
        
     b->stopAllActions();
     b->setPosition(ccp(bulletX, bulletY));
+    
+    bLeft->stopAllActions();
+    bLeft->setPosition(ccp(bulletXLeft, bulletY));
+    
+      
     int s = bulletTargetY - bulletY ;
-    float time = (s * 1.0f) / 1000;
+    float time = (s * 1.0f) / 800;
 
-
-    CCActionInterval*  _bulletFighting = CCMoveTo::create(time, ccp(bulletTargetX, bulletTargetY));
-    CCFiniteTimeAction*  sequence = CCSequence::create(_bulletFighting,
+       
+    
+    CCActionInterval *_bulletFighting = CCMoveTo::create(time, ccp(bulletTargetX, bulletTargetY));
+    CCActionInterval *_bulletFightingLeft = CCMoveTo::create(time, ccp(bulletTargetLeftX, bulletTargetY));
+   
+    CCFiniteTimeAction * sequence = CCSequence::create(_bulletFighting,
                                                        CCCallFuncN::create
                                                        (this, callfuncN_selector(GameLayer::fightingDone)),NULL);
+    
     b->setVisible(true);
     b->runAction(sequence);
+    
+    
+    CCFiniteTimeAction * sequenceLeft = CCSequence::create(_bulletFightingLeft,
+                                                       CCCallFuncN::create
+                                                       (this, callfuncN_selector(GameLayer::fightingDone)),NULL);
+    bLeft->setVisible(true);
+    bLeft->runAction(sequenceLeft);
+    
     
 }
 void GameLayer::fightingDone(CCNode* pSender)
@@ -347,6 +430,7 @@ void GameLayer::resetGame () {
     
     _running = true;
     _indexBullet = -1;
+    _indexBulletStraight = -1;
     
     SimpleAudioEngine::sharedEngine()->playBackgroundMusic("background.mp3", true);
     SimpleAudioEngine::sharedEngine()->stopAllEffects();
@@ -464,10 +548,6 @@ void GameLayer::createGameScreen () {
     _bullet->setPosition( ccp(_rocket->getPositionX() - 40, _rocket->getPositionY() ) );
     _gameBatchNode3->addChild(_bullet, kForeground, kSpriteBullet);
    
-    _gun = CCSprite::createWithSpriteFrameName("gun.png");
-    _gun->setPosition(ccp(_rocket->getPositionX() - 10, _rocket->getPositionY() ));
-    _gameBatchNode->addChild(_gun, kBackground);
-
     
     //add planets
    // GameSprite * planet;
@@ -475,16 +555,52 @@ void GameLayer::createGameScreen () {
     _planets->retain();
     
     _bullets = CCArray::createWithCapacity(20);
+    _leftBullets = CCArray::createWithCapacity(20);
+    
+    _bulletsStraightLeft = CCArray::createWithCapacity(20);
+    _bulletsStraightRight = CCArray::createWithCapacity(20);
+    
     _bullets ->retain();
+    _leftBullets ->retain();
+    _bulletsStraightLeft ->retain();
+    _bulletsStraightRight ->retain();
+    
     Bullet *b ;
+    
     for (int i = 0; i < 20; i++) {
-        b = Bullet::create();
-        b->setPosition( ccp(_rocket->getPositionX() - 40, _rocket->getPositionY() ) );
+        b = Bullet::create();        
+        b->setPosition( ccp(_rocket->getPositionX() , _rocket->getPositionY() ) );
+        b->setOpacity(245);
         _gameBatchNode3->addChild(b, kForeground, kSpriteBullet);
         _bullets->addObject(b);
+        
+        b = Bullet::create();
+        b->setPosition( ccp(_rocket->getPositionX() , _rocket->getPositionY() ) );
+        b->setOpacity(245);
+        _gameBatchNode3->addChild(b, kForeground, kSpriteBullet);
+        _leftBullets->addObject(b);
+        
+        b = Bullet::create();
+        b->setPosition( ccp(_rocket->getPositionX() , _rocket->getPositionY() ) );
+        b->setOpacity(245);
+        _gameBatchNode3->addChild(b, kForeground, kSpriteBullet);
+        _bulletsStraightLeft->addObject(b);
+        
+        b = Bullet::create();
+        b->setPosition( ccp(_rocket->getPositionX() , _rocket->getPositionY() ) );
+        b->setOpacity(245);
+        _gameBatchNode3->addChild(b, kForeground, kSpriteBullet);
+        _bulletsStraightRight->addObject(b);
+
+
     }
+    
+    
+    _angleXStartFighting = 0;
     _indexBullet = -1;
-     _gameBatchNode3->addChild(_rocket, kForeground, kSpriteRocket);
+    _indexBulletStraight = -1;
+    
+    _gameBatchNode3->addChild(_rocket, kForeground, kSpriteRocket);
     
 //    planet = GameSprite::createWithFrameName("planet_1.png");
 //    planet->setPosition(ccp(_screenSize.width * 0.25f,
